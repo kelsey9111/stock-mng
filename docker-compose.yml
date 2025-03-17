@@ -1,0 +1,51 @@
+version: "3.8"
+
+networks:
+  crm_network:
+    name: crm_network
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres_container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres1234
+      POSTGRES_DB: stockDB
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - crm_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_container
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - crm_network
+  crm:
+    image: crm.com
+    container_name: crm_container
+    restart: always
+    environment:
+      POSTGRES_DATABASE_URL: postgres://postgres:postgres1234@postgres_container:5433/stockDB
+      REDIS_URL: redis://redis_container:6379
+    ports:
+      - "8005:8082"
+    networks:
+      - crm_network
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./storage/logs:/storage/logs

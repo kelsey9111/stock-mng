@@ -1,0 +1,30 @@
+server:
+  port: 8082
+  mode: dev
+
+postgresql:
+  # host: 0.0.0.0
+  host: postgres_container
+  port: 5433
+  username: postgres
+  password: postgres1234
+  dbname: stockDB
+  maxIdleConns: 10
+  maxOpenConns: 100
+  maxLifeTimeConns: 3600
+
+redis:
+  # host: 0.0.0.0
+  host: redis_container
+  port: 6379
+  dbname: 0
+  poolSize: 10
+  password:
+
+logger:
+  level: debug
+  fileName: "./storage/logs/dev.log"
+  maxSize: 500
+  maxBackups: 3
+  maxAge: 28
+  compress: true
