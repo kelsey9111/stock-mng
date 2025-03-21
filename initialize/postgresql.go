@@ -6,7 +6,6 @@ import (
 	"stock-management/internal/models"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -34,8 +33,7 @@ func InitPostgreSQL() {
 	checkErrorPannic(err, "Install uuid-ossp extension error")
 
 	setPostgrePool()
-	migratePostgreTables()
-	// SeedData()
+	// migratePostgreTables()
 }
 
 func installUUIDExtension() error {
@@ -78,33 +76,4 @@ func migratePostgreTables() {
 		return
 	}
 	fmt.Print("PostgreSQL migration success")
-}
-
-func SeedData() {
-	uid, _ := uuid.Parse("e2bb9114-6532-40c1-a9ec-ebc92274dc72")
-	createdAt, _ := time.Parse("2006-01-02", "2025-03-07")
-	updatedAt, _ := time.Parse("2006-01-02", "2025-03-07")
-
-	categories := []models.ProductCategory{
-		{ProductCategoryID: uid, ProductCategoryName: "Clothing", CreatedAt: createdAt, UpdatedAt: updatedAt, Status: models.CategoryActive},
-	}
-
-	if err := global.Pdb.Create(&categories).Error; err != nil {
-		global.Logger.Fatal(fmt.Sprintf("Failed to seed categories: %v", err))
-	} else {
-		global.Logger.Info("Categories seeded successfully")
-	}
-
-	uid, _ = uuid.Parse("20dcd6f5-3ea5-41a6-a89d-59494b1e3170")
-	suppliers := []models.Supplier{
-		{SupplierID: uid, SupplierName: "Supplier A", Status: models.SupplierActive},
-	}
-
-	if err := global.Pdb.Create(&suppliers).Error; err != nil {
-		global.Logger.Fatal(fmt.Sprintf("Failed to seed supplier: %v", err))
-	} else {
-		global.Logger.Info("Supplier seeded successfully")
-	}
-
-	global.Logger.Info("Seed data added successfully")
 }

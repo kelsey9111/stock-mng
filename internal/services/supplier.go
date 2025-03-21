@@ -15,7 +15,7 @@ type supplierService struct {
 	supplierRepo repo.SupplierRepo
 }
 
-func NewSupplierService(supplierRepo repo.SupplierRepo) SupplierService {
+func newSupplierService(supplierRepo repo.SupplierRepo) SupplierService {
 	return &supplierService{
 		supplierRepo: supplierRepo,
 	}

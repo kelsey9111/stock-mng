@@ -7,14 +7,15 @@ const (
 	ErrInternal   RespCode = 500
 	ErrBadRequest RespCode = 400
 
-	ErrInvalidDate          RespCode = 20001
-	ErrInvalidName          RespCode = 30001
-	ErrInvalidCategory      RespCode = 30002
-	ErrInvalidSupplier      RespCode = 30003
-	ErrInvalidProduct       RespCode = 30004
-	ErrInvalidStatus        RespCode = 30005
-	ErrInvalidStockLocation RespCode = 30006
-	ErrInvalidReference     RespCode = 30007
+	Err                     RespCode = 3000
+	ErrInvalidName          RespCode = 3001
+	ErrInvalidCategory      RespCode = 3002
+	ErrInvalidSupplier      RespCode = 3003
+	ErrInvalidProduct       RespCode = 3004
+	ErrInvalidStatus        RespCode = 3005
+	ErrInvalidStockLocation RespCode = 3006
+	ErrInvalidReference     RespCode = 3007
+	ErrInvalidDate          RespCode = 2008
 )
 
 var msg = map[RespCode]string{
@@ -22,6 +23,7 @@ var msg = map[RespCode]string{
 	ErrInternal:   "Internal server error",
 	ErrBadRequest: "Bad qequest",
 
+	Err:                     "Error",
 	ErrInvalidDate:          "Date is invalid",
 	ErrInvalidName:          "Name is invalid",
 	ErrInvalidCategory:      "Category is invalid",

@@ -1,0 +1,499 @@
+definitions:
+  models.Product:
+    properties:
+      date_created:
+        type: string
+      price:
+        type: integer
+      product_category:
+        $ref: '#/definitions/models.ProductCategory'
+      product_category_id:
+        type: string
+      product_id:
+        type: string
+      product_name:
+        type: string
+      product_reference:
+        type: string
+      quantity:
+        type: integer
+      status:
+        $ref: '#/definitions/models.ProductStatus'
+      stock_location:
+        type: string
+      supplier:
+        $ref: '#/definitions/models.Supplier'
+      supplier_id:
+        type: string
+    type: object
+  models.ProductByIdReq:
+    properties:
+      product_id:
+        type: string
+    type: object
+  models.ProductCategory:
+    properties:
+      created_at:
+        type: string
+      product_category_id:
+        type: string
+      product_category_name:
+        type: string
+      status:
+        $ref: '#/definitions/models.ProductCategoryStatus'
+      updated_at:
+        type: string
+    type: object
+  models.ProductCategoryCreateReq:
+    properties:
+      product_category_name:
+        type: string
+      status:
+        $ref: '#/definitions/models.ProductCategoryStatus'
+    type: object
+  models.ProductCategorySearchReq:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      status:
+        $ref: '#/definitions/models.SupplierStatus'
+      supplier_name:
+        type: string
+    type: object
+  models.ProductCategoryStatus:
+    enum:
+    - active
+    - in active
+    type: string
+    x-enum-varnames:
+    - CategoryActive
+    - CategoryInActive
+  models.ProductCreateReq:
+    properties:
+      price:
+        type: integer
+      product_category_id:
+        type: string
+      product_name:
+        type: string
+      product_reference:
+        type: string
+      quantity:
+        type: integer
+      status:
+        $ref: '#/definitions/models.ProductStatus'
+      stock_location:
+        type: string
+      supplier_id:
+        type: string
+    type: object
+  models.ProductDistanceByIdReq:
+    properties:
+      ip:
+        type: string
+      product_id:
+        type: string
+    type: object
+  models.ProductDistanceRp:
+    properties:
+      distance:
+        type: string
+      ip_current_city:
+        type: string
+      stock_location_city:
+        type: string
+    type: object
+  models.ProductSearchReq:
+    properties:
+      date_created_from:
+        type: string
+      date_created_to:
+        type: string
+      limit:
+        type: integer
+      offset:
+        type: integer
+      price_from:
+        type: integer
+      price_to:
+        type: integer
+      product_category_ids:
+        items:
+          type: string
+        type: array
+      product_names:
+        items:
+          type: string
+        type: array
+      product_references:
+        items:
+          type: string
+        type: array
+      productCategoryUUIDs:
+        description: convert
+        items:
+          type: string
+        type: array
+      status:
+        items:
+          type: string
+        type: array
+      stock_locations:
+        items:
+          type: string
+        type: array
+      supplier_ids:
+        items:
+          type: string
+        type: array
+      supplierUUIDs:
+        items:
+          type: string
+        type: array
+    type: object
+  models.ProductSearchRp:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Product'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+    type: object
+  models.ProductStatus:
+    enum:
+    - Available
+    - On Order
+    - Out of Stock
+    type: string
+    x-enum-varnames:
+    - ProductStatusAvailable
+    - ProductStatusOnOrder
+    - ProductStatusOutOfStock
+  models.ProductUpdateReq:
+    properties:
+      price:
+        type: integer
+      product_category_id:
+        type: string
+      product_id:
+        type: string
+      product_name:
+        type: string
+      product_reference:
+        type: string
+      quantity:
+        type: integer
+      status:
+        $ref: '#/definitions/models.ProductStatus'
+      stock_location:
+        type: string
+      supplier_id:
+        type: string
+    type: object
+  models.SearchRp:
+    properties:
+      data: {}
+      limit:
+        type: integer
+      offset:
+        type: integer
+    type: object
+  models.Supplier:
+    properties:
+      status:
+        $ref: '#/definitions/models.SupplierStatus'
+      supplier_id:
+        type: string
+      supplier_name:
+        type: string
+    type: object
+  models.SupplierCreateReq:
+    properties:
+      status:
+        $ref: '#/definitions/models.SupplierStatus'
+      supplier_name:
+        type: string
+    type: object
+  models.SupplierSearchReq:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      status:
+        $ref: '#/definitions/models.SupplierStatus'
+      supplier_name:
+        type: string
+    type: object
+  models.SupplierStatus:
+    enum:
+    - active
+    - in active
+    type: string
+    x-enum-varnames:
+    - SupplierActive
+    - SupplierInActive
+info:
+  contact: {}
+paths:
+  /api/product-category/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new product category and returns the created product
+        category details
+      parameters:
+      - description: ProductCategory creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductCategoryCreateReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ProductCategory'
+      summary: Create product category
+      tags:
+      - ProductCategory
+  /api/product-category/list:
+    post:
+      consumes:
+      - application/json
+      description: Returns a list of product categorys matching the search request
+      parameters:
+      - description: ProductCategory search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductCategorySearchReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SearchRp'
+      summary: Retrieve product category list
+      tags:
+      - ProductCategory
+  /api/product/create:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new product to the inventory
+      parameters:
+      - description: Product creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductCreateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+      summary: Create new product
+      tags:
+      - Product
+  /api/product/distance:
+    post:
+      consumes:
+      - application/json
+      description: Returns the distance of a product specified by its ID
+      parameters:
+      - description: Product distance request details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductDistanceByIdReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProductDistanceRp'
+      summary: Calculate the distance
+      tags:
+      - Product
+  /api/product/export:
+    post:
+      consumes:
+      - application/json
+      description: Generates and returns a PDF file containing the list of products
+      parameters:
+      - description: Product search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductSearchReq'
+      produces:
+      - application/pdf
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Export product list to PDF
+      tags:
+      - Product
+  /api/product/get:
+    post:
+      consumes:
+      - application/json
+      description: Returns details of a product specified by its ID
+      parameters:
+      - description: Product ID details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductByIdReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+      summary: Retrieve product by ID
+      tags:
+      - Product
+  /api/product/list:
+    post:
+      consumes:
+      - application/json
+      description: Returns a list of products matching the search request
+      parameters:
+      - description: Product search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductSearchReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProductSearchRp'
+      summary: dynamic filtering and incremental search
+      tags:
+      - Product
+  /api/product/update:
+    post:
+      consumes:
+      - application/json
+      description: Modifies the details of an existing product
+      parameters:
+      - description: Product update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProductUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+      summary: Update product details
+      tags:
+      - Product
+  /api/statistics/products-per-category:
+    get:
+      consumes:
+      - application/json
+      description: Get percentage of products per category
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: number
+            type: object
+      summary: Get percentage of products per category
+      tags:
+      - Statistics
+  /api/statistics/products-per-supplier:
+    get:
+      consumes:
+      - application/json
+      description: Get percentage of products per supplier
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: number
+            type: object
+      summary: Get percentage of products per supplier
+      tags:
+      - Statistics
+  /api/supplier/create:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new supplier and returns the created supplier details
+      parameters:
+      - description: Supplier creation details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SupplierCreateReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Supplier'
+      summary: Create supplier
+      tags:
+      - Supplier
+  /api/supplier/list:
+    post:
+      consumes:
+      - application/json
+      description: Returns a list of suppliers matching the search request
+      parameters:
+      - description: Supplier search details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SupplierSearchReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SearchRp'
+      summary: Retrieve supplier list
+      tags:
+      - Supplier
+swagger: "2.0"

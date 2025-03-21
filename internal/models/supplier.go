@@ -24,8 +24,8 @@ const (
 )
 
 type SupplierCreateReq struct {
-	SupplierName string `json:"supplier_name"`
-	Status       string `json:"status"`
+	SupplierName string         `json:"supplier_name"`
+	Status       SupplierStatus `json:"status"`
 }
 
 func (req *SupplierCreateReq) Validate() response.RespCode {

@@ -2,7 +2,6 @@ package models
 
 import (
 	"stock-management/pkgs/response"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -11,8 +10,8 @@ type ProductCategory struct {
 	ProductCategoryID   uuid.UUID             `gorm:"primaryKey;type:uuid;column:product_category_id" json:"product_category_id"`
 	ProductCategoryName string                `gorm:"not null;column:product_category_name" json:"product_category_name"`
 	Status              ProductCategoryStatus `gorm:"not null;column:status" json:"status"`
-	CreatedAt           time.Time             `gorm:"not null;column:created_at" json:"created_at"`
-	UpdatedAt           time.Time             `gorm:"not null;column:updated_at" json:"updated_at"`
+	CreatedAt           string                `gorm:"not null;column:created_at" json:"created_at"`
+	UpdatedAt           string                `gorm:"not null;column:updated_at" json:"updated_at"`
 }
 
 func (p *ProductCategory) TableName() string {
@@ -27,8 +26,8 @@ const (
 )
 
 type ProductCategoryCreateReq struct {
-	ProductCategoryName string `json:"product_category_name"`
-	Status              string `json:"status"`
+	ProductCategoryName string                `json:"product_category_name"`
+	Status              ProductCategoryStatus `json:"status"`
 }
 
 func (req *ProductCategoryCreateReq) Validate() response.RespCode {

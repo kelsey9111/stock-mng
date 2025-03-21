@@ -36,8 +36,8 @@ func FailResponseWithCode(c *gin.Context, code RespCode) {
 }
 func FailResponseWithMessage(c *gin.Context, msgs string) {
 	c.JSON(http.StatusOK, ResponseData{
-		Code:    ErrInternal,
-		Message: msg[ErrInternal] + " " + msgs,
+		Code:    Err,
+		Message: msg[Err] + " " + msgs,
 		Data:    nil,
 	})
 }

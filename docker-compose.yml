@@ -19,7 +19,7 @@ services:
       POSTGRES_PASSWORD: postgres1234
       POSTGRES_DB: stockDB
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -34,14 +34,17 @@ services:
     networks:
       - crm_network
   crm:
-    image: crm.com
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: crm_app
     container_name: crm_container
     restart: always
     environment:
       POSTGRES_DATABASE_URL: postgres://postgres:postgres1234@postgres_container:5433/stockDB
       REDIS_URL: redis://redis_container:6379
     ports:
-      - "8005:8082"
+      - "8002:8002"
     networks:
       - crm_network
     depends_on:

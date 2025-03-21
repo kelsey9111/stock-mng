@@ -3,7 +3,6 @@ package repo
 import (
 	"context"
 	"errors"
-	"stock-management/global"
 	"stock-management/internal/models"
 	"time"
 
@@ -18,10 +17,14 @@ type SupplierRepo interface {
 	GetSupplierList(ctx context.Context, req models.SupplierSearchReq) ([]models.Supplier, int, error)
 }
 
-type supplierRepo struct{}
+type supplierRepo struct {
+	pdb *gorm.DB
+}
 
-func NewSupplierRepo() SupplierRepo {
-	return &supplierRepo{}
+func NewSupplierRepo(db *gorm.DB) SupplierRepo {
+	return &supplierRepo{
+		pdb: db,
+	}
 }
 
 func (sr *supplierRepo) GetSupplierList(ctx context.Context, req models.SupplierSearchReq) ([]models.Supplier, int, error) {
@@ -29,7 +32,7 @@ func (sr *supplierRepo) GetSupplierList(ctx context.Context, req models.Supplier
 	defer cancel()
 
 	var suppliers []models.Supplier
-	q := global.Pdb.WithContext(ctx).Model(&models.Supplier{})
+	q := sr.pdb.WithContext(ctx).Model(&models.Supplier{})
 	if req.SupplierName != "" {
 		q = q.Where("supplier_name LIKE ?", "%"+req.SupplierName+"%")
 	}
@@ -40,7 +43,7 @@ func (sr *supplierRepo) GetSupplierList(ctx context.Context, req models.Supplier
 		return nil, 0, err
 	}
 	var totalCount int64
-	err := global.Pdb.WithContext(ctx).Model(&models.Supplier{}).Where(q.Statement.SQL.String(), q.Statement.Vars...).Count(&totalCount).Error
+	err := sr.pdb.WithContext(ctx).Model(&models.Supplier{}).Where(q.Statement.SQL.String(), q.Statement.Vars...).Count(&totalCount).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -49,7 +52,7 @@ func (sr *supplierRepo) GetSupplierList(ctx context.Context, req models.Supplier
 
 func (sr *supplierRepo) GetSupplier(ctx context.Context, id uuid.UUID) (*models.Supplier, error) {
 	var s models.Supplier
-	if err := global.Pdb.WithContext(ctx).First(&s, id).Error; err != nil {
+	if err := sr.pdb.WithContext(ctx).First(&s, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -58,7 +61,7 @@ func (sr *supplierRepo) GetSupplier(ctx context.Context, id uuid.UUID) (*models.
 	return &s, nil
 }
 
-func (cr *supplierRepo) GetSuppliersByIds(ctx context.Context, ids []uuid.UUID) ([]models.Supplier, error) {
+func (sr *supplierRepo) GetSuppliersByIds(ctx context.Context, ids []uuid.UUID) ([]models.Supplier, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -66,7 +69,7 @@ func (cr *supplierRepo) GetSuppliersByIds(ctx context.Context, ids []uuid.UUID) 
 		return []models.Supplier{}, nil
 	}
 	var suppliers []models.Supplier
-	if err := global.Pdb.WithContext(ctx).Where("supplier_id IN ?", ids).Find(&suppliers).Error; err != nil {
+	if err := sr.pdb.WithContext(ctx).Where("supplier_id IN ?", ids).Find(&suppliers).Error; err != nil {
 		return nil, err
 	}
 	return suppliers, nil
@@ -78,7 +81,7 @@ func (sr *supplierRepo) CreateSupplier(ctx context.Context, req models.SupplierC
 		SupplierName: req.SupplierName,
 		Status:       models.SupplierStatus(req.Status),
 	}
-	if err := global.Pdb.WithContext(ctx).Create(&supplier).Error; err != nil {
+	if err := sr.pdb.WithContext(ctx).Create(&supplier).Error; err != nil {
 		return nil, err
 	}
 	return &supplier, nil

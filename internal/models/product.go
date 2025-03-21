@@ -11,16 +11,16 @@ import (
 )
 
 type Product struct {
-	ProductID         uuid.UUID `gorm:"primaryKey;type:uuid;column:product_id" json:"product_id"`
-	ProductName       string    `gorm:"not null;column:product_name" json:"product_name"`
-	ProductReference  string    `gorm:"not null;column:product_reference" json:"product_reference"`
-	Status            string    `gorm:"not null;column:status" json:"status"`
-	ProductCategoryID uuid.UUID `gorm:"not null;column:product_category_id" json:"product_category_id"`
-	Price             int       `gorm:"not null;column:price" json:"price"`
-	StockLocation     string    `gorm:"not null;column:stock_location" json:"stock_location"`
-	SupplierID        uuid.UUID `gorm:"not null;column:supplier_id" json:"supplier_id"`
-	Quantity          int       `gorm:"not null;column:quantity" json:"quantity"`
-	DateCreated       time.Time `gorm:"not null;column:date_created" json:"date_created"`
+	ProductID         uuid.UUID     `gorm:"primaryKey;type:uuid;column:product_id" json:"product_id"`
+	ProductName       string        `gorm:"not null;column:product_name" json:"product_name"`
+	ProductReference  string        `gorm:"not null;column:product_reference" json:"product_reference"`
+	Status            ProductStatus `gorm:"not null;column:status" json:"status"`
+	ProductCategoryID uuid.UUID     `gorm:"not null;column:product_category_id" json:"product_category_id"`
+	Price             int           `gorm:"not null;column:price" json:"price"`
+	StockLocation     string        `gorm:"not null;column:stock_location" json:"stock_location"`
+	SupplierID        uuid.UUID     `gorm:"not null;column:supplier_id" json:"supplier_id"`
+	Quantity          int           `gorm:"not null;column:quantity" json:"quantity"`
+	DateCreated       time.Time     `gorm:"not null;column:date_created" json:"date_created"`
 
 	//
 	Supplier        Supplier        `json:"supplier"`
@@ -44,17 +44,15 @@ const (
 	ProductStatusOutOfStock ProductStatus = "Out of Stock"
 )
 
-var validProductStatus = []ProductStatus{ProductStatusAvailable, ProductStatusOutOfStock, ProductStatusOnOrder}
-
 type ProductCreateReq struct {
-	ProductName       string `json:"product_name"`
-	ProductReference  string `json:"product_reference"`
-	Status            string `json:"status"`
-	ProductCategoryID string `json:"product_category_id"`
-	Price             int    `json:"price"`
-	StockLocation     string `json:"stock_location"`
-	Quantity          int    `json:"quantity"`
-	SupplierID        string `json:"supplier_id"`
+	ProductName       string        `json:"product_name"`
+	ProductReference  string        `json:"product_reference"`
+	Status            ProductStatus `json:"status"`
+	ProductCategoryID string        `json:"product_category_id"`
+	Price             int           `json:"price"`
+	StockLocation     string        `json:"stock_location"`
+	Quantity          int           `json:"quantity"`
+	SupplierID        string        `json:"supplier_id"`
 }
 
 func (req *ProductCreateReq) Validate() response.RespCode {
@@ -82,15 +80,15 @@ func (req *ProductCreateReq) Validate() response.RespCode {
 }
 
 type ProductUpdateReq struct {
-	ProductID         string `json:"product_id"`
-	ProductName       string `json:"product_name"`
-	ProductReference  string `json:"product_reference"`
-	Status            string `json:"status"`
-	ProductCategoryID string `json:"product_category_id"`
-	Price             int    `json:"price"`
-	StockLocation     string `json:"stock_location"`
-	Quantity          int    `json:"quantity"`
-	SupplierID        string `json:"supplier_id"`
+	ProductID         string        `json:"product_id"`
+	ProductName       string        `json:"product_name"`
+	ProductReference  string        `json:"product_reference"`
+	Status            ProductStatus `json:"status"`
+	ProductCategoryID string        `json:"product_category_id"`
+	Price             int           `json:"price"`
+	StockLocation     string        `json:"stock_location"`
+	Quantity          int           `json:"quantity"`
+	SupplierID        string        `json:"supplier_id"`
 }
 
 func (req *ProductUpdateReq) Validate() response.RespCode {
@@ -148,6 +146,7 @@ type ProductByIdReq struct {
 
 type ProductDistanceByIdReq struct {
 	ProductID string `json:"product_id"`
+	Ip        string `json:"ip"`
 }
 
 type Pagination struct {
@@ -218,9 +217,15 @@ func getUUIDs(l []string) []uuid.UUID {
 }
 
 const (
-	CategoryProductsKey     string = "a_category_products:%v"
-	SupplierProductsKey     string = "a_supplier_products:%v"
-	CategoryProductsScanKey string = "a_category_products:*"
-	SupplierProductsScanKey string = "a_supplier_products:*"
-	TotalProductsKey        string = "a_product_total"
+	CategoryProductsKey     string = "category_products:%v"
+	SupplierProductsKey     string = "supplier_products:%v"
+	CategoryProductsScanKey string = "category_products:*"
+	SupplierProductsScanKey string = "supplier_products:*"
+	TotalProductsKey        string = "product_total"
 )
+
+type ProductDistanceRp struct {
+	IpCurrentCity     string `json:"ip_current_city"`
+	StockLocationCity string `json:"stock_location_city"`
+	Distance          string `json:"distance"`
+}

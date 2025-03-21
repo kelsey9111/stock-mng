@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"stock-management/global"
 	"stock-management/internal/models"
 	"stock-management/pkgs/utils"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -21,16 +21,20 @@ type ProductRepo interface {
 	GetProductList(ctx context.Context, req models.ProductSearchReq) ([]models.Product, int, error)
 	CreateProduct(ctx context.Context, product models.ProductCreateReq) (models.Product, error)
 	UpdateProduct(ctx context.Context, product models.ProductUpdateReq) (models.Product, error)
-	GetProductPercentagePerKey(ctx context.Context, key string) (map[string]int64, error)
+	GetProductPercentagePerKey(ctx context.Context, key string) (map[string]decimal.Decimal, error)
 }
 
 type productRepo struct {
+	pdb                 *gorm.DB
+	cache               *redis.Client
 	productCategoryRepo ProductCategoryRepo
 	supplierRepo        SupplierRepo
 }
 
-func NewProductRepo(cr ProductCategoryRepo, sp SupplierRepo) ProductRepo {
+func NewProductRepo(db *gorm.DB, redis *redis.Client, cr ProductCategoryRepo, sp SupplierRepo) ProductRepo {
 	return &productRepo{
+		pdb:                 db,
+		cache:               redis,
 		productCategoryRepo: cr,
 		supplierRepo:        sp,
 	}
@@ -41,7 +45,7 @@ func (pr *productRepo) GetProduct(ctx context.Context, id uuid.UUID) (*models.Pr
 	defer cancel()
 
 	var product models.Product
-	err := global.Pdb.WithContext(ctx).Preload("Supplier").Preload("ProductCategory").First(&product, id).Error
+	err := pr.pdb.WithContext(ctx).Preload("Supplier").Preload("ProductCategory").First(&product, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -99,7 +103,7 @@ func (pr *productRepo) GetProductList(ctx context.Context, req models.ProductSea
 		return products, 0, nil
 	}
 
-	q := global.Pdb.WithContext(ctx).Model(&models.Product{})
+	q := pr.pdb.WithContext(ctx).Model(&models.Product{})
 
 	q = pr.applyFilters(q, req, categoryUUIDs, supplierUUIDs)
 
@@ -130,7 +134,7 @@ func (pr *productRepo) GetProductList(ctx context.Context, req models.ProductSea
 		nextOffset = 0
 	}
 
-	return products, int(totalCount), nil
+	return products, nextOffset, nil
 }
 
 func (pr *productRepo) applyFilters(q *gorm.DB, req models.ProductSearchReq, categoryUUIDs, supplierUUIDs []uuid.UUID) *gorm.DB {
@@ -170,7 +174,7 @@ func (pr *productRepo) applyFilters(q *gorm.DB, req models.ProductSearchReq, cat
 }
 
 func (pr *productRepo) getTotalCount(ctx context.Context, req models.ProductSearchReq, categoryUUIDs, supplierUUIDs []uuid.UUID) (int64, error) {
-	countQuery := global.Pdb.WithContext(ctx).Model(&models.Product{})
+	countQuery := pr.pdb.WithContext(ctx).Model(&models.Product{})
 
 	// Apply filters to count query
 	countQuery = pr.applyFilters(countQuery, req, categoryUUIDs, supplierUUIDs)
@@ -187,7 +191,7 @@ func (pr *productRepo) CreateProduct(ctx context.Context, req models.ProductCrea
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	tx := global.Pdb.Begin()
+	tx := pr.pdb.Begin()
 	if tx.Error != nil {
 		return models.Product{}, tx.Error
 	}
@@ -205,28 +209,40 @@ func (pr *productRepo) CreateProduct(ctx context.Context, req models.ProductCrea
 	}
 
 	var err error
-	var supplier *models.Supplier
-	var productCategory *models.ProductCategory
 
 	wg := utils.NewWgGroup()
 	wg.Go(func() error {
-		supplier, err = pr.supplierRepo.GetSupplier(ctx, product.SupplierID)
-		if err != nil {
-			return err
-		}
-		if supplier == nil {
-			return errors.New("invalid supplier")
+		cacheKey := fmt.Sprintf(models.SupplierProductsKey, product.SupplierID)
+		_, err := pr.cache.Get(ctx, cacheKey).Result()
+		if err == nil {
+			return nil
+		} else if err == redis.Nil {
+			var supplier *models.Supplier
+			supplier, err = pr.supplierRepo.GetSupplier(ctx, product.SupplierID)
+			if err != nil {
+				return err
+			}
+			if supplier == nil {
+				return errors.New("invalid supplier")
+			}
 		}
 		return nil
 	})
 
 	wg.Go(func() error {
-		productCategory, err = pr.productCategoryRepo.GetCategoryByID(ctx, product.ProductCategoryID)
-		if err != nil {
-			return err
-		}
-		if productCategory == nil {
-			return errors.New("invalid product category")
+		cacheKey := fmt.Sprintf(models.CategoryProductsKey, product.ProductCategoryID)
+		_, err := pr.cache.Get(ctx, cacheKey).Result()
+		if err == nil {
+			return nil
+		} else if err == redis.Nil {
+			var productCategory *models.ProductCategory
+			productCategory, err = pr.productCategoryRepo.GetCategoryByID(ctx, product.ProductCategoryID)
+			if err != nil {
+				return err
+			}
+			if productCategory == nil {
+				return errors.New("invalid product category")
+			}
 		}
 		return nil
 	})
@@ -243,7 +259,7 @@ func (pr *productRepo) CreateProduct(ctx context.Context, req models.ProductCrea
 	}
 
 	//
-	pipe := global.Rdb.Pipeline()
+	pipe := pr.cache.Pipeline()
 	pipe.Incr(ctx, fmt.Sprintf(models.SupplierProductsKey, product.SupplierID))
 	pipe.Incr(ctx, models.TotalProductsKey)
 	pipe.Incr(ctx, fmt.Sprintf(models.CategoryProductsKey, product.ProductCategoryID))
@@ -265,7 +281,7 @@ func (pr *productRepo) UpdateProduct(ctx context.Context, req models.ProductUpda
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	tx := global.Pdb.Begin()
+	tx := pr.pdb.Begin()
 	if tx.Error != nil {
 		return models.Product{}, tx.Error
 	}
@@ -291,18 +307,23 @@ func (pr *productRepo) UpdateProduct(ctx context.Context, req models.ProductUpda
 	product.ProductCategoryID = uuid.MustParse(req.ProductCategoryID)
 
 	wg := utils.NewWgGroup()
-	var supplier *models.Supplier
-	var productCategory *models.ProductCategory
 	var err error
 
 	if preSupplierID != newSupplierID {
 		wg.Go(func() error {
-			supplier, err = pr.supplierRepo.GetSupplier(ctx, newSupplierID)
-			if err != nil {
-				return err
-			}
-			if supplier == nil {
-				return errors.New("invalid supplier")
+			cacheKey := fmt.Sprintf(models.SupplierProductsKey, product.SupplierID)
+			_, err := pr.cache.Get(ctx, cacheKey).Result()
+			if err == nil {
+				return nil
+			} else if err == redis.Nil {
+				var supplier *models.Supplier
+				supplier, err = pr.supplierRepo.GetSupplier(ctx, product.SupplierID)
+				if err != nil {
+					return err
+				}
+				if supplier == nil {
+					return errors.New("invalid supplier")
+				}
 			}
 			return nil
 		})
@@ -310,12 +331,19 @@ func (pr *productRepo) UpdateProduct(ctx context.Context, req models.ProductUpda
 
 	if preProductCategoryID != newProductCategoryID {
 		wg.Go(func() error {
-			productCategory, err = pr.productCategoryRepo.GetCategoryByID(ctx, newProductCategoryID)
-			if err != nil {
-				return err
-			}
-			if productCategory == nil {
-				return errors.New("invalid product category")
+			cacheKey := fmt.Sprintf(models.CategoryProductsKey, product.ProductCategoryID)
+			_, err := pr.cache.Get(ctx, cacheKey).Result()
+			if err == nil {
+				return nil
+			} else if err == redis.Nil {
+				var productCategory *models.ProductCategory
+				productCategory, err = pr.productCategoryRepo.GetCategoryByID(ctx, product.ProductCategoryID)
+				if err != nil {
+					return err
+				}
+				if productCategory == nil {
+					return errors.New("invalid product category")
+				}
 			}
 			return nil
 		})
@@ -333,7 +361,7 @@ func (pr *productRepo) UpdateProduct(ctx context.Context, req models.ProductUpda
 	}
 
 	// Update cache
-	pipe := global.Rdb.Pipeline()
+	pipe := pr.cache.Pipeline()
 	if preSupplierID != newSupplierID {
 		pipe.Incr(ctx, fmt.Sprintf(models.SupplierProductsKey, newSupplierID))
 		pipe.Decr(ctx, fmt.Sprintf(models.SupplierProductsKey, preSupplierID))
@@ -355,14 +383,14 @@ func (pr *productRepo) UpdateProduct(ctx context.Context, req models.ProductUpda
 	return product, nil
 }
 
-func (sr *productRepo) GetProductPercentagePerKey(ctx context.Context, key string) (map[string]int64, error) {
+func (pr *productRepo) GetProductPercentagePerKey(ctx context.Context, key string) (map[string]decimal.Decimal, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	countList := make(map[string]int64)
-	percentages := make(map[string]int64)
+	percentages := make(map[string]decimal.Decimal)
 
-	totalProducts, err := getTotalProducts(ctx)
+	totalProducts, err := pr.getTotalProducts(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -373,16 +401,19 @@ func (sr *productRepo) GetProductPercentagePerKey(ctx context.Context, key strin
 
 	var cursor uint64
 	for {
-		var keys []string
-		var err error
-		keys, cursor, err = global.Rdb.Scan(ctx, cursor, key, 100).Result()
+		keys, newCursor, err := pr.cache.Scan(ctx, cursor, key, 100).Result()
 		if err != nil {
 			continue
 		}
 
 		for _, key := range keys {
-			id := strings.Split(key, ":")[1]
-			countp, err := global.Rdb.Get(ctx, key).Result()
+			parts := strings.Split(key, ":")
+			if len(parts) < 2 {
+				continue
+			}
+			id := parts[1]
+
+			countp, err := pr.cache.Get(ctx, key).Result()
 			if err != nil {
 				continue
 			}
@@ -395,20 +426,21 @@ func (sr *productRepo) GetProductPercentagePerKey(ctx context.Context, key strin
 			countList[id] = count
 		}
 
+		cursor = newCursor
 		if cursor == 0 {
 			break
 		}
 	}
 
 	for id, count := range countList {
-		percentages[id] = (count * 100) / totalProducts
+		percentages[id] = decimal.NewFromInt(count).Mul(decimal.NewFromInt(100)).Div(decimal.NewFromInt(totalProducts)).Round(2)
 	}
 
 	return percentages, nil
 }
 
-func getTotalProducts(ctx context.Context) (int64, error) {
-	val, err := global.Rdb.Get(ctx, models.TotalProductsKey).Result()
+func (pr *productRepo) getTotalProducts(ctx context.Context) (int64, error) {
+	val, err := pr.cache.Get(ctx, models.TotalProductsKey).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return 0, nil

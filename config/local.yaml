@@ -1,11 +1,11 @@
 server:
-  port: 8082
+  port: 8002
   mode: dev
 
 postgresql:
   # host: 0.0.0.0
   host: postgres_container
-  port: 5433
+  port: 5432
   username: postgres
   password: postgres1234
   dbname: stockDB

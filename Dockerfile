@@ -1,19 +1,28 @@
-FROM golang:alpine AS builder  
+FROM golang:1.21-alpine AS builder
 
-WORKDIR /build
+WORKDIR /app
 
 COPY . .
 
+COPY go.mod go.sum ./
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o crm.com ./cmd/server
 
-FROM alpine  
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o crm_server ./cmd/server
+
+
+FROM alpine:latest  
 
 WORKDIR /
 
-COPY ./config /config
 
-COPY --from=builder /build/crm.com /
-RUN chmod +x /crm.com
+COPY --from=builder /app/config /config
 
-CMD ["/crm.com", "config/local.yaml"]
+
+COPY --from=builder /app/crm_server /crm_server
+
+
+RUN chmod +x /crm_server
+
+
+CMD ["/crm_server", "config/local.yaml"]
